@@ -1,0 +1,5 @@
+.vscode/
+.env
+docs/chroma/
+langchain_g4f/
+__pycache__
