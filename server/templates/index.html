@@ -1,80 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width,height=device-height, user-scalable=no,initial-scale=1, minimum-scale=1, maximum-scale=1,target-densitydpi=device-dpi ">
     <title>ChatData AI</title>
-    <meta name="viewport"
-          content="width=device-width,height=device-height, user-scalable=no,initial-scale=1, minimum-scale=1, maximum-scale=1,target-densitydpi=device-dpi ">
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.3/dist/full.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.5.1/dist/full.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body>
-<div class="container">
-    <div class="flex flex-col items-center h-screen w-screen">
-        <div class="flex flex-col items-center justify-center">
-            <h1 class="text-5xl font-bold mt-20">ChatData AI</h1>
-            <p class="text-xl my-10">一个基于本地知识库的AI</p>
-        </div>
-        <div class="flex flex-row items-center justify-center w-full">
-            <input id="search" type="search" placeholder="请输入查询内容"
-                   class="input input-bordered w-2/3 lg:w-2/5 mr-2"/>
-            <button class="btn btn-primary flex items-center justify-center">
-                <span id="submit-text">查询</span>
-                <svg id="loading" class="animate-spin h-5 w-5 ml-2 text-white" style="display: none;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </button>
-        </div>
-        <div class="flex flex-col justify-start mt-10 mx-5">
-            <div class="card bg-base-100 shadow-md">
-                <div class="card-body">
-                    <h2 class="card-title">AI 回答</h2>
-                    <p class="text-lg" id="answer"></p>                
+    <div class="container">
+        <div class="flex flex-col items-center h-screen w-screen">
+            <div class="flex flex-col items-center justify-center">
+                <h1 class="text-5xl font-bold mt-20">ChatData AI</h1>
+                <p class="text-xl my-10">一个基于本地知识库的AI</p>
+            </div>          
+            <div class="tabs tabs-boxed">
+                <a class="tab" onclick="openTab(event, 'Tab1')">文件上传</a>
+                <a class="tab" onclick="openTab(event, 'Tab2')">AI问答</a>
+            </div>
+            <div id="Tab1" class="tabcontent">
+                <input id="file" type="file"
+                    class="file-input file-input-bordered file-input-primary w-full max-w-xs" />
+                <button id="submit-file" class="btn btn-primary" onclick="upload()">
+                    <span id="submit-file-text">上传</span>
+                    <svg id="submit-file-loading" class="animate-spin h-5 w-5 ml-2 text-white" style="display: none;"
+                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
+                </button>     
+                <div id="errorMsg" class="alert alert-warning text-base-200" style="display: none; margin-top: 8px;">                                  
+                 </div>                                           
+            </div>
+            <div id="Tab2" class="tabcontent w-full">
+                <div class="flex flex-row items-center justify-center w-full">
+                    <input id="search" type="search" placeholder="请输入查询内容"
+                        class="input input-bordered w-2/3 lg:w-2/5 mr-2" />
+                    <button id="submit-query" class="btn btn-primary flex items-center justify-center">
+                        <span id="submit-text">查询</span>
+                        <svg id="loading" class="animate-spin h-5 w-5 ml-2 text-white" style="display: none;"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex flex-col justify-start mt-10 mx-5">
+                    <div class="card bg-base-100 shadow-md">
+                        <div class="card-body">
+                            <h2 class="card-title">AI 回答</h2>
+                            <p class="text-lg" id="answer"></p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-<script>
-    const submitButton = document.querySelector('button');
-    const search = document.querySelector('#search');
-    const card = document.querySelector('.card');
-    const loading = document.querySelector('#loading');
-    const submitText = document.querySelector('#submit-text');
-    card.style.display = 'none';
-    // 回车事件绑定
-    search.onkeypress=function(event){
-        if (event.keyCode == "13") {        
-            submitButton.click();
+    <script>
+        const submitButton = document.querySelector('#submit-query');
+        const search = document.querySelector('#search');
+        const card = document.querySelector('.card');
+        const loading = document.querySelector('#loading');
+        const submitText = document.querySelector('#submit-text');
+        card.style.display = 'none';
+        // 回车事件绑定
+        search.onkeypress = function (event) {
+            if (event.keyCode == "13") {
+                submitButton.click();
+            }
         }
-    }
-    
-    submitButton.addEventListener('click', () => {
-        loading.style.display = 'block';
-        submitText.style.display = 'none';
-        submitButton.disabled = true;
-        const data = {
-            search: search.value,
-        };
-        fetch('/query', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        }).then(res => res.json()).then(data => {                      
-            card.style.display = 'block';    
-            document.querySelector('#answer').innerHTML = data.answer;
-        }).catch(error => {                    
-            console.error('Error:', error);
-        }).finally(() => {
-            loading.style.display = 'none';
-            submitText.style.display = 'block';
-            submitButton.disabled = false;            
-        })
-    });
 
-</script>
+        submitButton.addEventListener('click', () => {
+            loading.style.display = 'block';
+            submitText.style.display = 'none';
+            submitButton.disabled = true;
+            const data = {
+                search: search.value,
+            };
+            fetch('/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            }).then(res => res.json()).then(data => {
+                card.style.display = 'block';
+                document.querySelector('#answer').innerHTML = data.answer;
+            }).catch(error => {
+                console.error('Error:', error);
+            }).finally(() => {
+                loading.style.display = 'none';
+                submitText.style.display = 'block';
+                submitButton.disabled = false;
+            })
+        });
+
+        const tabcontents = document.getElementsByClassName('tabcontent');
+        tabcontents[1].style.display = "none";
+        const tabs = document.getElementsByClassName("tab");
+        tabs[0].className += " tab-active";
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tab");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" tab-active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " tab-active";
+        }
+
+
+        function upload() {
+            const submitFile = document.querySelector("#submit-file")
+            const submitText = document.querySelector('#submit-file-text');
+            const loading = document.querySelector('#submit-file-loading');
+            const errorMsgText = document.querySelector('#errorMsg');
+            const formData = new FormData();
+            const files = document.getElementById("file");
+            if (files.files[0] == undefined) {
+                errorMsgText.style.display = "block";
+                errorMsgText.innerHTML = "请选择文件上传";
+                return;
+            }
+            submitText.style.display = "none";
+            loading.style.display = "block"
+            submitFile.disabled = true;
+            formData.append("file", files.files[0]);
+            const requestOptions = {
+                headers: {
+                    "Content-Type": files.files[0].contentType, // This way, the Content-Type value in the header will always match the content type of the file
+                },
+                mode: "no-cors",
+                method: "POST",
+                files: files.files[0],
+                body: formData,
+            };
+
+            fetch("/upload", requestOptions)
+            .then(res => res.json())
+            .then(data => {    
+                errorMsgText.style.display = "block";            
+                errorMsgText.innerHTML = data.errorMsg;
+            })
+            .catch(error => {            
+                console.error('Error:', error);            
+            })
+            .finally(() => {
+                submitText.style.display = "block";
+                loading.style.display = "none"
+                submitFile.disabled = false;
+                errorMsgText.style.display = "none";
+            })
+        }
+    </script>
 </body>
+
 </html>
