@@ -58,11 +58,12 @@ class QAChain:
         # define retriever
         retriever = db.as_retriever(search_type="similarity")
             
-        memory = ConversationBufferMemory(
-            memory_key="chat_history", return_messages=True, output_key="answer")
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
+        # 使用更便宜、更快的模型来完成问题的凝练工作，然后再使用昂贵的模型来回答问题
         self.qa_chain = ConversationalRetrievalChain.from_llm(
             llm=ChatOpenAI(model_name=llm_name, temperature=0),
             chain_type="stuff",
+            condense_question_llm = ChatOpenAI(temperature=0),
             retriever=retriever,
             combine_docs_chain_kwargs={"prompt": self.QA_CHAIN_PROMPT},
             memory=memory,
