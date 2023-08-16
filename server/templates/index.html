@@ -155,14 +155,15 @@
                 errorMsgText.style.display = "block";            
                 errorMsgText.innerHTML = data.errorMsg;
             })
-            .catch(error => {            
+            .catch(error => {                            
                 console.error('Error:', error);            
+                errorMsgText.style.display = "block";            
+                errorMsgText.innerHTML = "发送错误，请重试"
             })
             .finally(() => {
                 submitText.style.display = "block";
                 loading.style.display = "none"
-                submitFile.disabled = false;
-                errorMsgText.style.display = "none";
+                submitFile.disabled = false;               
             })
         }
     </script>

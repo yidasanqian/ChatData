@@ -30,7 +30,7 @@ class QAChain:
     QA_CHAIN_PROMPT = None  
     qa_chain = None
 
-    def __init__(self) -> None:       
+    def __init__(self) -> None:               
          # Build prompt
         template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer. Use three sentences maximum. Keep the answer as concise as possible. Always say "thanks for asking!" at the end of the answer. 
         {context}
@@ -122,4 +122,4 @@ def query():
     }
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
