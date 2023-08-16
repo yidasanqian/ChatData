@@ -1,14 +1,14 @@
-import os
+import os,sys
 import uuid
 import hashlib
 import openai
-from flask import Flask,session
+import logging
+from flask import Flask
 from flask import render_template
 from flask import request
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
-from langchain.chains.conversational_retrieval.prompts import QA_PROMPT
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
@@ -22,6 +22,11 @@ app.config['UPLOAD_FOLDER'] = 'upload/'
 openai.api_key = os.environ['OPENAI_API_KEY']
 openai.api_base = os.environ['OPENAI_API_BASE']
 llm_name = "gpt-3.5-turbo"
+
+formatter = logging.Formatter("[%(asctime)s] %(levelname)s %(thread)d --- [%(filename)s:%(lineno)d] - %(message)s")
+stream_handler = logging.StreamHandler(stream=sys.stdout)
+stream_handler.setFormatter(formatter)
+app.logger.handlers[0] = stream_handler
 
 persist_directory = 'docs/chroma/'
 
@@ -86,7 +91,7 @@ def uploader():
             if not os.path.exists(folder_path):  #判断是否存在文件夹如果不存在则创建为文件夹
                 os.makedirs(folder_path)
             filepath = folder_path +create_uuid_from_string(f.filename) + file_extension
-            app.logger.info(f"保存文件路径：{filepath}")                    
+            app.logger.debug(f"保存文件路径：{filepath}")                    
             f.save(filepath)
             qa.load_db(filepath)
             errorMsg = 'file uploaded successfully'                   
@@ -104,8 +109,8 @@ def create_uuid_from_string(val: str):
 @app.route('/query', methods=['POST'])
 def query():
     data = request.get_json()
-    search = data['search']    
-    app.logger.info(f"问题：{search}")
+    search = data['search']        
+    app.logger.debug(f"问题：{search}")
     qa_chain = qa.qa_chain
     if qa_chain is None:
         app.logger.warn("未加载数据")
@@ -115,7 +120,7 @@ def query():
         
     result = qa_chain({"question": search})
     answer = result['answer']
-    app.logger.info(f"答案：{answer}")
+    app.logger.debug(f"答案：{answer}")
 
     return {
         "answer": answer
