@@ -4,9 +4,12 @@ import hashlib
 import openai
 import langchain
 import logging
+from uuid import UUID
+from typing import Any, Optional
+from tenacity import RetryCallState
 from flask import Flask
 from flask import render_template, redirect, url_for
-from flask import request,session
+from flask import request,session, Response, stream_with_context
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
@@ -16,6 +19,8 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import PyPDFLoader
 from langchain.cache import InMemoryCache
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.schema import LLMResult
 
 app = Flask(__name__)
 app.secret_key = 'chatdataqa'
@@ -34,9 +39,43 @@ langchain.llm_cache = InMemoryCache()
 
 persist_directory = 'docs/chroma/'
 
+class ChainStreamHandler(StreamingStdOutCallbackHandler):
+    def __init__(self):
+        self.tokens = []
+        # 记得结束后这里置true
+        self.finish = False
+
+    def on_llm_new_token(self, token: str, **kwargs):     
+        self.tokens.append(token)
+
+    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+        self.finish = True
+
+    def on_llm_error(self, error: Exception, **kwargs: Any) -> None:
+        print(str(error))
+        self.tokens.append(str(error))
+
+    def generate_tokens(self):
+        while not self.finish or self.tokens:
+            if self.tokens:
+                data = self.tokens.pop(0)
+                yield data
+            else:
+                pass
+
+    def on_retry(
+        self,
+        retry_state: RetryCallState,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Run on a retry event."""
+        print("忽略重试")
 
 class QAChain:
-
+    chainStreamHandler = ChainStreamHandler()
     # 存储对话关联的qa chain
     conversationChain = dict()
     FILEPATH_KEY_PREFIX = "filepath:"
@@ -68,7 +107,7 @@ class QAChain:
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
         # 使用更便宜、更快的模型来完成问题的凝练工作，然后再使用昂贵的模型来回答问题
         QAChain.conversationChain[conversation_id] = ConversationalRetrievalChain.from_llm(
-            llm=ChatOpenAI(model_name=llm_name, temperature=0),
+            llm=ChatOpenAI(streaming=True, callbacks=[QAChain.chainStreamHandler], model_name=llm_name, temperature=0),
             chain_type="stuff",
             condense_question_llm = ChatOpenAI(temperature=0),
             retriever=retriever,
@@ -148,17 +187,12 @@ def query():
             return {
                 "answer": "未加载数据"
             }        
-        
-    result = qa_chain({"question": search})
-    answer = result['answer']
-    app.logger.debug(f"答案：{answer}")
-    # for d in result['source_documents']:
-    #     app.logger.debug(d.metadata)
-   
-    #chat_history = result['chat_history']     
-    return {
-        "answer": answer
-    }
+
+    qa_run(qa_chain, search)
+    return Response(stream_with_context(QAChain.chainStreamHandler.generate_tokens()), mimetype="text/event-stream")   
+
+def qa_run(qa, question):
+    qa({"question": question})
 
 if __name__ == '__main__':
     app.run(debug=True)

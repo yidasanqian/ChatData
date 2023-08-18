@@ -81,7 +81,8 @@
             }
         }
 
-        submitButton.addEventListener('click', () => {
+        const answerHtml = document.getElementById('answer')
+        submitButton.addEventListener('click', async () => {
             loading.style.display = 'block';
             submitText.style.display = 'none';
             submitButton.disabled = true;
@@ -91,28 +92,50 @@
                 search: message,
             };
 
-            if (message.length > 0) {
+            if (message.length > 0) {   
+                answerHtml.innerHTML = "";
+
                 add_conversation(window.conversation_id, message.substr(0, 16));
-                fetch('/query', {
+               
+                const response = await fetch('/query', {
                     method: 'POST',
                     headers: {
+                        accept: `text/event-stream`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(data)
-                }).then(res => res.json()).then(data => {
-                    card.style.display = 'block';
-                    let text = data.answer;
-                    document.querySelector('#answer').innerHTML = text;
-
-                    add_message(window.conversation_id, "user", message);
-		            add_message(window.conversation_id, "assistant", text);
                 }).catch(error => {
-                    console.error('Error:', error);
-                }).finally(() => {
-                    loading.style.display = 'none';
-                    submitText.style.display = 'block';
-                    submitButton.disabled = false;
-                })
+                    console.error(error);
+                });
+                const reader = response.body.getReader();
+                let responseText = "";                                             
+                if (response.ok) {
+                    card.style.display = 'block';
+                    const decoder = new TextDecoder();
+                    while(true) {
+                        // 当最后一块下载完成时，done 值为 true
+                        // value 是块字节的 Uint8Array
+                        const {done, value} = await reader.read();
+                        if (done) break;
+                        
+                        let chunk = decodeUnicode(decoder.decode(value));
+
+                        console.log(`Received chunk: ${chunk}`);
+                        responseText += chunk;                     
+                        answerHtml.innerHTML = responseText;
+                    }
+                                      
+                    if (responseText.length > 0) {
+                        add_message(window.conversation_id, "user", message);
+                        add_message(window.conversation_id, "assistant", responseText);
+                    }
+                } else{
+                    console.log(response.body)
+                }
+
+                loading.style.display = 'none';
+                submitText.style.display = 'block';
+                submitButton.disabled = false;            
             }
         });
 
@@ -179,6 +202,12 @@
             })
         }
         
+        const decodeUnicode = (str) => {
+            return str.replace(/\\u([a-fA-F0-9]{4})/g, function (match, grp) {
+                return String.fromCharCode(parseInt(grp, 16));
+            });
+        };
+
         const add_conversation = async (conversation_id, title) => {
             if (localStorage.getItem(`conversation:${conversation_id}`) == null) {
                 localStorage.setItem(
