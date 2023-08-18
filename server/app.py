@@ -2,6 +2,7 @@ import os,sys
 import uuid
 import hashlib
 import openai
+import langchain
 import logging
 from flask import Flask
 from flask import render_template, redirect, url_for
@@ -14,19 +15,22 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import PyPDFLoader
+from langchain.cache import InMemoryCache
 
 app = Flask(__name__)
 app.secret_key = 'chatdataqa'
 app.config['UPLOAD_FOLDER'] = 'upload/'
 
-openai.api_key = os.environ['OPENAI_API_KEY']
-openai.api_base = os.environ['OPENAI_API_BASE']
-llm_name = "gpt-3.5-turbo"
-
 formatter = logging.Formatter("[%(asctime)s] %(levelname)s %(thread)d --- [%(filename)s:%(lineno)d] - %(message)s")
 stream_handler = logging.StreamHandler(stream=sys.stdout)
 stream_handler.setFormatter(formatter)
 app.logger.handlers[0] = stream_handler
+
+openai.api_key = os.environ['OPENAI_API_KEY']
+openai.api_base = os.environ['OPENAI_API_BASE']
+llm_name = "gpt-3.5-turbo"
+
+langchain.llm_cache = InMemoryCache()
 
 persist_directory = 'docs/chroma/'
 
