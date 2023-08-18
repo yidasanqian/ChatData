@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width,height=device-height, user-scalable=no,initial-scale=1, minimum-scale=1, maximum-scale=1,target-densitydpi=device-dpi ">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 maximum-scale=1.0" />
     <title>ChatData AI</title>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.5.1/dist/full.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -57,7 +57,7 @@
                 <div class="flex flex-col justify-start mt-10 mx-5">
                     <div class="card bg-base-100 shadow-md">
                         <div class="card-body">
-                            <h2 class="card-title">AI 回答</h2>
+                            <h2 class="card-title">ChatDataAI</h2>
                             <p class="text-lg" id="answer"></p>
                         </div>
                     </div>
@@ -66,6 +66,8 @@
         </div>
     </div>
     <script>
+        window.conversation_id = "{{ chat_id }}";
+
         const submitButton = document.querySelector('#submit-query');
         const search = document.querySelector('#search');
         const card = document.querySelector('.card');
@@ -73,7 +75,7 @@
         const submitText = document.querySelector('#submit-text');
         card.style.display = 'none';
         // 回车事件绑定
-        search.onkeypress = function (event) {
+        search.onkeypress = (event) => {
             if (event.keyCode == "13") {
                 submitButton.click();
             }
@@ -83,32 +85,42 @@
             loading.style.display = 'block';
             submitText.style.display = 'none';
             submitButton.disabled = true;
+            let message = search.value
             const data = {
-                search: search.value,
+                conversation_id: window.conversation_id,
+                search: message,
             };
-            fetch('/query', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            }).then(res => res.json()).then(data => {
-                card.style.display = 'block';
-                document.querySelector('#answer').innerHTML = data.answer;
-            }).catch(error => {
-                console.error('Error:', error);
-            }).finally(() => {
-                loading.style.display = 'none';
-                submitText.style.display = 'block';
-                submitButton.disabled = false;
-            })
+
+            if (message.length > 0) {
+                add_conversation(window.conversation_id, message.substr(0, 16));
+                fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                }).then(res => res.json()).then(data => {
+                    card.style.display = 'block';
+                    let text = data.answer;
+                    document.querySelector('#answer').innerHTML = text;
+
+                    add_message(window.conversation_id, "user", message);
+		            add_message(window.conversation_id, "assistant", text);
+                }).catch(error => {
+                    console.error('Error:', error);
+                }).finally(() => {
+                    loading.style.display = 'none';
+                    submitText.style.display = 'block';
+                    submitButton.disabled = false;
+                })
+            }
         });
 
         const tabcontents = document.getElementsByClassName('tabcontent');
         tabcontents[1].style.display = "none";
         const tabs = document.getElementsByClassName("tab");
         tabs[0].className += " tab-active";
-        function openTab(evt, tabName) {
+        const openTab = (evt, tabName) => {
             var i, tabcontent, tablinks;
             tabcontent = document.getElementsByClassName("tabcontent");
             for (i = 0; i < tabcontent.length; i++) {
@@ -122,8 +134,7 @@
             evt.currentTarget.className += " tab-active";
         }
 
-
-        function upload() {
+        function upload(event) {
             const submitFile = document.querySelector("#submit-file")
             const submitText = document.querySelector('#submit-file-text');
             const loading = document.querySelector('#submit-file-loading');
@@ -139,6 +150,7 @@
             loading.style.display = "block"
             submitFile.disabled = true;
             formData.append("file", files.files[0]);
+            formData.append("conversation_id", window.conversation_id)
             const requestOptions = {
                 headers: {
                     "Content-Type": files.files[0].contentType, // This way, the Content-Type value in the header will always match the content type of the file
@@ -158,7 +170,7 @@
             .catch(error => {                            
                 console.error('Error:', error);            
                 errorMsgText.style.display = "block";            
-                errorMsgText.innerHTML = "发送错误，请重试"
+                errorMsgText.innerHTML = "上传错误，请重试"
             })
             .finally(() => {
                 submitText.style.display = "block";
@@ -166,6 +178,30 @@
                 submitFile.disabled = false;               
             })
         }
+        
+        const add_conversation = async (conversation_id, title) => {
+            if (localStorage.getItem(`conversation:${conversation_id}`) == null) {
+                localStorage.setItem(
+                    `conversation:${conversation_id}`,
+                    JSON.stringify({
+                        id: conversation_id,
+                        title: title,
+                        items: [],
+                    })
+                );
+            }
+        }
+       
+        const add_message = async (conversation_id, role, content) => {
+            before_adding = JSON.parse(localStorage.getItem(`conversation:${conversation_id}`));
+
+            before_adding.items.push({
+                role: role,
+                content: content,
+            });
+
+            localStorage.setItem(`conversation:${conversation_id}`, JSON.stringify(before_adding)); // update conversation
+        };
     </script>
 </body>
 

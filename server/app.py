@@ -4,8 +4,8 @@ import hashlib
 import openai
 import logging
 from flask import Flask
-from flask import render_template
-from flask import request
+from flask import render_template, redirect, url_for
+from flask import request,session
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
@@ -30,20 +30,24 @@ app.logger.handlers[0] = stream_handler
 
 persist_directory = 'docs/chroma/'
 
+
 class QAChain:
 
-    QA_CHAIN_PROMPT = None  
-    qa_chain = None
+    # 存储对话关联的qa chain
+    conversationChain = dict()
+    FILEPATH_KEY_PREFIX = "filepath:"
 
     def __init__(self) -> None:               
-         # Build prompt
+        # Build prompt
         template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer. Use three sentences maximum. Keep the answer as concise as possible. Always say "thanks for asking!" at the end of the answer. 
         {context}
         Question: {question}
         Helpful Answer:"""
-        self.QA_CHAIN_PROMPT = PromptTemplate.from_template(template)       
+        self.__QA_CHAIN_PROMPT = PromptTemplate.from_template(template)       
 
-    def load_db(self, filepath):
+    def load_db(self, filepath, conversation_id):      
+        session[QAChain.FILEPATH_KEY_PREFIX + conversation_id] = filepath
+       
         loader = PyPDFLoader(filepath)
         documents = loader.load()
         # split documents
@@ -56,31 +60,41 @@ class QAChain:
         db = Chroma.from_documents(persist_directory=persist_directory,
                                 documents=docs, embedding=embeddings)
         # define retriever
-        retriever = db.as_retriever(search_type="similarity")
-            
+        retriever = db.as_retriever(search_type="similarity")     
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
         # 使用更便宜、更快的模型来完成问题的凝练工作，然后再使用昂贵的模型来回答问题
-        self.qa_chain = ConversationalRetrievalChain.from_llm(
+        QAChain.conversationChain[conversation_id] = ConversationalRetrievalChain.from_llm(
             llm=ChatOpenAI(model_name=llm_name, temperature=0),
             chain_type="stuff",
             condense_question_llm = ChatOpenAI(temperature=0),
             retriever=retriever,
-            combine_docs_chain_kwargs={"prompt": self.QA_CHAIN_PROMPT},
-            memory=memory,
+            combine_docs_chain_kwargs={"prompt": self.__QA_CHAIN_PROMPT},
+            memory=memory,            
             return_source_documents=True
-        )       
-
-qa = QAChain()
+        )  
+             
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    chat_id = ""
+    try:
+        key = list(session.keys())[-1]      
+        chat_id = key.split(":")[1]
+        app.logger.debug(f"chat_id: {chat_id}")
+    except Exception:
+        chat_id = str(uuid.uuid1())
+    
+    return render_template('index.html', chat_id=chat_id)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 @app.route('/upload', methods=['POST'])
 def uploader():
     if request.method == 'POST':
+        conversation_id = request.form['conversation_id']
+        if '-' not in conversation_id:
+            return redirect(url_for('._index'))
+        
         f = request.files['file']
         if f is None or f.filename == '':
             errorMsg = '请选择文件'
@@ -94,13 +108,15 @@ def uploader():
             filepath = folder_path +create_uuid_from_string(f.filename) + file_extension
             app.logger.debug(f"保存文件路径：{filepath}")                    
             f.save(filepath)
-            qa.load_db(filepath)
+            qa = QAChain()
+            qa.load_db(filepath, conversation_id)
             errorMsg = 'file uploaded successfully'                   
             f.close()
     else:
         errorMsg = 'Method not allowed'
-    return {"errorMsg":errorMsg
-            }
+    return {
+        "errorMsg":errorMsg
+    }
 
 
 def create_uuid_from_string(val: str):
@@ -109,20 +125,33 @@ def create_uuid_from_string(val: str):
 
 @app.route('/query', methods=['POST'])
 def query():
+    conversation_id = request.json['conversation_id']
+    if '-' not in conversation_id:
+        return redirect(url_for('._index'))
+    
     data = request.get_json()
     search = data['search']        
     app.logger.debug(f"问题：{search}")
-    qa_chain = qa.qa_chain
+   
+    qa_chain = QAChain.conversationChain.get(conversation_id)
     if qa_chain is None:
-        app.logger.warn("未加载数据")
-        return {
-            "answer": "未加载数据"
-        }
+        filepath = session.get(QAChain.FILEPATH_KEY_PREFIX + conversation_id)
+        if filepath is not None: 
+            qa = QAChain()
+            qa.load_db(filepath, conversation_id)            
+            qa_chain = QAChain.conversationChain.get(conversation_id)
+        else:
+            return {
+                "answer": "未加载数据"
+            }        
         
     result = qa_chain({"question": search})
     answer = result['answer']
     app.logger.debug(f"答案：{answer}")
-
+    # for d in result['source_documents']:
+    #     app.logger.debug(d.metadata)
+   
+    #chat_history = result['chat_history']     
     return {
         "answer": answer
     }
