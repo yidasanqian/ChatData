@@ -131,12 +131,13 @@
                     }
                 } else{
                     console.log(response.body)
-                }
-
-                loading.style.display = 'none';
-                submitText.style.display = 'block';
-                submitButton.disabled = false;            
+                }                          
+            } else{
+                alert("请输入查询内容")                             
             }
+            loading.style.display = 'none';
+            submitText.style.display = 'block';
+            submitButton.disabled = false; 
         });
 
         const tabcontents = document.getElementsByClassName('tabcontent');

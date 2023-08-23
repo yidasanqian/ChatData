@@ -1,0 +1,22 @@
+{
+    // These tasks will run in order when initializing your CodeSandbox project.
+    "setupTasks": [
+      {
+        "name": "pip install -r requirements.txt",
+        "command": "pip install -r requirements.txt"
+      }
+    ],
+  
+    // These tasks can be run from CodeSandbox. Running one will open a log in the app.
+    "tasks": {
+      "start": {
+        "name": "start",
+        "command": "flask --app server.app run",
+        "runAtStart": true,
+        "preview": {
+          "port": 5000
+        }
+      }
+    }
+  }
+  

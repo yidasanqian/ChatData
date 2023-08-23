@@ -195,4 +195,4 @@ def qa_run(qa, question):
     qa({"question": question})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
