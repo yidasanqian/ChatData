@@ -57,5 +57,4 @@ http://127.0.0.1:5000
 ```
 
 ## 使用协议
-
 本仓库遵循 [Apache-2.0 license](https://github.com/yidasanqian/ChatData/blob/master/LICENSE) 开源协议。
