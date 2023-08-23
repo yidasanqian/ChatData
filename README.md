@@ -13,7 +13,7 @@ ChatData AI 是一个基于 OpenAI 大语言模型的知识库问答系统，支
 - [x] 支持部署在codesandbox
 
 ## 快速开始 :white_check_mark:  
-要开始这个项目，您需要克隆存储库并在系统上安装 [Python]（https://www.python.org/downloads/） 
+要开始这个项目，您需要克隆存储库并在系统上安装 [Python](https://www.python.org/downloads/)
   
 ### 克隆存储库 :inbox_tray:
 运行以下命令以克隆存储库:  
