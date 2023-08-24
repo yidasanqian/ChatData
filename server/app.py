@@ -109,7 +109,7 @@ class QAChain:
         QAChain.conversationChain[conversation_id] = ConversationalRetrievalChain.from_llm(
             llm=ChatOpenAI(streaming=True, max_tokens=4097, callbacks=[QAChain.chainStreamHandler], model_name=llm_name, temperature=0),
             chain_type="stuff",
-            condense_question_llm = ChatOpenAI(temperature=0),
+            condense_question_llm = ChatOpenAI(temperature=0, max_tokens=4097),
             retriever=retriever,
             combine_docs_chain_kwargs={"prompt": self.__QA_CHAIN_PROMPT},
             memory=memory,            
