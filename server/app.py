@@ -52,8 +52,8 @@ class ChainStreamHandler(StreamingStdOutCallbackHandler):
         self.finish = True
 
     def on_llm_error(self, error: Exception, **kwargs: Any) -> None:
-        print(str(error))
-        self.tokens.append(str(error))
+        app.logger.error(error)
+        self.tokens.append(error.user_message)
 
     def generate_tokens(self):
         while not self.finish or self.tokens:
@@ -72,7 +72,7 @@ class ChainStreamHandler(StreamingStdOutCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         """Run on a retry event."""
-        print("忽略重试")
+        app.logger.info("忽略重试")
 
 class QAChain:
     chainStreamHandler = ChainStreamHandler()
@@ -107,7 +107,7 @@ class QAChain:
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
         # 使用更便宜、更快的模型来完成问题的凝练工作，然后再使用昂贵的模型来回答问题
         QAChain.conversationChain[conversation_id] = ConversationalRetrievalChain.from_llm(
-            llm=ChatOpenAI(streaming=True, callbacks=[QAChain.chainStreamHandler], model_name=llm_name, temperature=0),
+            llm=ChatOpenAI(streaming=True, max_tokens=4097, callbacks=[QAChain.chainStreamHandler], model_name=llm_name, temperature=0),
             chain_type="stuff",
             condense_question_llm = ChatOpenAI(temperature=0),
             retriever=retriever,
