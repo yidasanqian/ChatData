@@ -1,4 +1,4 @@
-FROM python:3.9.16
+FROM python:3.10
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 RUN echo 'Asia/Shanghai' >/etc/timezone
 RUN apt update -y && apt install lib32z1 -y
