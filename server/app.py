@@ -12,7 +12,7 @@ from flask import render_template, redirect, url_for
 from flask import request,session, Response, stream_with_context
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import Milvus
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
@@ -34,10 +34,10 @@ app.logger.handlers[0] = stream_handler
 openai.api_key = os.environ['OPENAI_API_KEY']
 openai.api_base = os.environ['OPENAI_API_BASE']
 llm_name = "gpt-3.5-turbo"
+milvus_uri = os.environ['MILVUS_URI']
+milvus_token = os.environ['MILVUS_TOKEN']
 
 langchain.llm_cache = InMemoryCache()
-
-persist_directory = 'docs/chroma/'
 
 class ChainStreamHandler(StreamingStdOutCallbackHandler):
     def __init__(self):
@@ -99,9 +99,8 @@ class QAChain:
         docs = text_splitter.split_documents(documents)
         # define embedding
         embeddings = OpenAIEmbeddings()
-        # create vector database from data
-        db = Chroma.from_documents(persist_directory=persist_directory,
-                                documents=docs, embedding=embeddings)
+        # create vector database from data    
+        db = Milvus.from_documents(documents=docs, embedding=embeddings, connection_args={"uri":milvus_uri,"token":milvus_token})
         # define retriever
         retriever = db.as_retriever(search_type="similarity")     
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")

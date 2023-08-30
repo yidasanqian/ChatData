@@ -11,6 +11,7 @@ ChatData AI 是一个基于 OpenAI 大语言模型的知识库问答系统，支
 - [x] 本地会话
 - [x] 流式输出
 - [x] 支持部署在codesandbox
+- [x] 向量数据库使用Milvus
 
 ## 快速开始 :white_check_mark:  
 要开始这个项目，您需要克隆存储库并在系统上安装 [Python](https://www.python.org/downloads/)
@@ -36,8 +37,10 @@ pip install -r requirements.txt
 ### 设置环境变量 ℹ️ 
 新建`.env`文件：
 ```
-OPENAI_API_KEY=
+OPENAI_API_KEY=Your openai key 
 OPENAI_API_BASE=https://api.openai.com/v1
+MILVUS_URI=Your zillizcloud Public Endpoint
+MILVUS_TOKEN=Your zillizcloud Token
 ```
 
 ## 运行应用程序 :rocket:
