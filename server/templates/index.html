@@ -104,8 +104,6 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(data)
-                }).catch(error => {
-                    console.error(error);
                 });
                 const reader = response.body.getReader();
                 let responseText = "";                                             
@@ -131,7 +129,8 @@
                     }
                 } else{
                     console.log(response.body)
-                }                          
+                    answerHtml.innerHTML = "服务出错，请稍后重试"
+                }                                               
             } else{
                 alert("请输入查询内容")                             
             }

@@ -52,8 +52,7 @@ class ChainStreamHandler(StreamingStdOutCallbackHandler):
         self.finish = True
 
     def on_llm_error(self, error: Exception, **kwargs: Any) -> None:
-        app.logger.error(error)
-        self.tokens.append(error.user_message)
+        app.logger.error(error)       
 
     def generate_tokens(self):
         while not self.finish or self.tokens:
@@ -104,7 +103,7 @@ class QAChain:
         # define retriever
         retriever = db.as_retriever(search_type="similarity")     
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
-        # 使用更便宜、更快的模型来完成问题的凝练工作，然后再使用昂贵的模型来回答问题
+
         QAChain.conversationChain[conversation_id] = ConversationalRetrievalChain.from_llm(
             llm=ChatOpenAI(streaming=True, max_tokens=4097, callbacks=[QAChain.chainStreamHandler], model_name=llm_name, temperature=0),
             chain_type="stuff",
@@ -143,13 +142,22 @@ def uploader():
         elif f.mimetype != "application/pdf":
             errorMsg = '暂时只支持PDF文件'
         else:
+            md5 = hashlib.md5()
+            # 逐块读取文件内容并更新MD5哈希
+            for chunk in iter(lambda: f.read(4096), b''):
+                md5.update(chunk)     
+            f.seek(0)  # 将文件指针重置到文件开头                                   
+            md5_value = md5.hexdigest()
             file_extension = os.path.splitext(f.filename)[1]
             folder_path = os.path.join(basedir,app.config['UPLOAD_FOLDER'])
-            if not os.path.exists(folder_path):  #判断是否存在文件夹如果不存在则创建为文件夹
+            if not os.path.exists(folder_path): 
                 os.makedirs(folder_path)
-            filepath = folder_path +create_uuid_from_string(f.filename) + file_extension
-            app.logger.debug(f"保存文件路径：{filepath}")                    
-            f.save(filepath)
+            filepath = folder_path + md5_value + file_extension
+            app.logger.debug(f"保存文件路径：{filepath}")  
+            if os.path.isfile(filepath):
+                app.logger.debug(f"{filepath} 文件存在")
+            else:                  
+                f.save(filepath)
             qa = QAChain()
             qa.load_db(filepath, conversation_id)
             errorMsg = 'file uploaded successfully'                   
